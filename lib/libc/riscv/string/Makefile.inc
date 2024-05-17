@@ -1,0 +1,2 @@
+MDSRCS+= \
+	strlen.S
