@@ -50,12 +50,12 @@ ENTRY(strlen)
 	ld a2, (a1)
 	beq a1, a0, .Lhas_zero
 
-	/* fill bytes before str_start with 0xFF */
+	/* fill bytes before str_start with non-zero */
 	slli t2, a0, 3
-	li t3, -1			# load 0xFFFFFFFFFFFFFFFF
-	sll t3, t3, t2		# shift mask by unaligned bytes		
-	not t3, t3			# mask bytes before str_start
-	or a2, a2, t3		# fill with 0xFF
+	addi t3, t2, -64
+	neg t3, t3
+	srl t3, t0, t3
+	or a2, a2, t3
 
 	/* unrolled iteration of haszero */
 	not t2, a2
