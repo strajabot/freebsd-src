@@ -1,0 +1,2 @@
+MDSRCS+= \
+	memchr.S
