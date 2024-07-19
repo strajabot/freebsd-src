@@ -1,0 +1,2 @@
+MDSRCS+= \
+	strchrnul.S
