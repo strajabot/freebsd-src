@@ -1,0 +1,2 @@
+MDSRCS+= \
+	memcpy.S
