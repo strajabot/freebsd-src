@@ -190,6 +190,42 @@ ENTRY(memcpy)
 
 	beqz a2, .Lreturn8
 
+	slti t0, a2, 128
+	bnez t0, .Llmain8_64_skip
+
+	/* a4 - uint64_t* end_unroll */
+
+	/* end_unroll = dst + len / 64 * 64 */
+	andi t0, a2, ~0b111111
+	add a4, a3, t0
+
+	/* len = len % 64 */
+	andi a2, a2, 0b111111
+
+.Llmain8_64:
+	ld t0, 0(a1)
+	ld t1, 8(a1)
+	ld t2, 16(a1)
+	ld t3, 24(a1)
+	sd t0, 0(a3)
+	sd t1, 8(a3)
+	sd t2, 16(a3)
+	sd t3, 24(a3)
+	ld t0, 32(a1)
+	ld t1, 40(a1)
+	ld t2, 48(a1)
+	ld t3, 56(a1)
+	sd t0, 32(a3)
+	sd t1, 40(a3)
+	sd t2, 48(a3)
+	sd t3, 56(a3)
+	addi a3, a3, 64
+	addi a1, a1, 64
+	bne a3, a4, .Llmain8_64
+.Llmain8_64_skip:
+
+	beqz a2, .Lreturn8
+
 	/* a4 - uint64_t* end_align */
 
 	/* end_align = (dst + len) & ~0b111 */
@@ -206,7 +242,6 @@ ENTRY(memcpy)
 	addi a3, a3, 8
 	addi a1, a1, 8
 	bne a3, a4, .Llmain8
-
 .Llmain8_skip:
 
 	la t1, .Lduff8_end
