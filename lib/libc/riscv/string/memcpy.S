@@ -18,45 +18,46 @@ ENTRY(memcpy)
 	sub t0, a0, a1
 	andi t0, t0, 0b111
 
-	beqz t0, .Lmemcpy8
+	sltiu t1, a2, 8
 
 	/* we never change a0, because memcpy returns the original dst */
 	mv a3, a0
 
-	/* t0 = MIN((-dst) & 0b111, len); */
-	neg t0, a0
-	andi t0, t0, 0b111
-	sub t0, t0, a2
-	srai t1, t0, 63
-	and t0, t0, t1
-	add t0, a2, t0
+	/* len < 8 */
+	bnez t1, .Lend
 
-	sub a2, a2, t0
+	/* t1 = (-dst) & 0b111 */
+	neg t1, a0
+	andi t1, t1, 0b111
 
-	la t1, .Lduff_start
-	slli t2, t0, 3
-	sub t1, t1, t2
-	jr t1
-	lb t2, 6(a1)
-	sb t2, 6(a3)
-	lb t2, 5(a1)
-	sb t2, 5(a3)
-	lb t2, 4(a1)
-	sb t2, 4(a3)
-	lb t2, 3(a1)
-	sb t2, 3(a3)
-	lb t2, 2(a1)
-	sb t2, 2(a3)
-	lb t2, 1(a1)
-	sb t2, 1(a3)
-	lb t2, 0(a1)
-	sb t2, 0(a3)
+	sub a2, a2, t1
+
+	la t2, .Lduff_start
+	slli t3, t1, 3
+	sub t2, t2, t3
+	jr t2
+	lb t3, 6(a1)
+	sb t3, 6(a3)
+	lb t3, 5(a1)
+	sb t3, 5(a3)
+	lb t3, 4(a1)
+	sb t3, 4(a3)
+	lb t3, 3(a1)
+	sb t3, 3(a3)
+	lb t3, 2(a1)
+	sb t3, 2(a3)
+	lb t3, 1(a1)
+	sb t3, 1(a3)
+	lb t3, 0(a1)
+	sb t3, 0(a3)
 .Lduff_start:
 
-	add a1, a1, t0
-	add a3, a3, t0
+	add a1, a1, t1
+	add a3, a3, t1
 
 	beqz a2, .Lreturn
+
+	beqz t0, .Lmemcpy8
 
 	/*
 	 * a4 - size_t right_shift
@@ -122,6 +123,7 @@ ENTRY(memcpy)
 
 .Llmain_skip:
 
+.Lend:
 	la t1, .Lduff_end
 	slli t2, a2, 3
 	sub t1, t1, t2
@@ -142,8 +144,6 @@ ENTRY(memcpy)
 	sb t2, 0(a3)
 .Lduff_end:
 
-.Llend_skip:
-
 .Lreturn:
 	ret
 
@@ -153,42 +153,8 @@ ENTRY(memcpy)
  * a2 - size_t len
  */
 .Lmemcpy8:
-	mv a3, a0
 
-	/* t0 = MIN((-dst) & 0b111, len); */
-	neg t0, a0
-	andi t0, t0, 0b111
-	sub t0, t0, a2
-	srai t1, t0, 63
-	and t0, t0, t1
-	add t0, a2, t0
-
-	sub a2, a2, t0
-
-	la t1, .Lduff8_start
-	slli t2, t0, 3
-	sub t1, t1, t2
-	jr t1
-	lb t2, 6(a1)
-	sb t2, 6(a3)
-	lb t2, 5(a1)
-	sb t2, 5(a3)
-	lb t2, 4(a1)
-	sb t2, 4(a3)
-	lb t2, 3(a1)
-	sb t2, 3(a3)
-	lb t2, 2(a1)
-	sb t2, 2(a3)
-	lb t2, 1(a1)
-	sb t2, 1(a3)
-	lb t2, 0(a1)
-	sb t2, 0(a3)
-.Lduff8_start:
-
-	add a1, a1, t0
-	add a3, a3, t0
-
-	beqz a2, .Lreturn8
+	beqz a2, .Lreturn
 
 	slti t0, a2, 128
 	bnez t0, .Llmain8_64_skip
@@ -224,7 +190,7 @@ ENTRY(memcpy)
 	bne a3, a4, .Llmain8_64
 .Llmain8_64_skip:
 
-	beqz a2, .Lreturn8
+	beqz a2, .Lreturn
 
 	/* a4 - uint64_t* end_align */
 
@@ -244,26 +210,8 @@ ENTRY(memcpy)
 	bne a3, a4, .Llmain8
 .Llmain8_skip:
 
-	la t1, .Lduff8_end
+	la t1, .Lduff_end
 	slli t2, a2, 3
 	sub t1, t1, t2
 	jr t1
-	lb t2, 6(a1)
-	sb t2, 6(a3)
-	lb t2, 5(a1)
-	sb t2, 5(a3)
-	lb t2, 4(a1)
-	sb t2, 4(a3)
-	lb t2, 3(a1)
-	sb t2, 3(a3)
-	lb t2, 2(a1)
-	sb t2, 2(a3)
-	lb t2, 1(a1)
-	sb t2, 1(a3)
-	lb t2, 0(a1)
-	sb t2, 0(a3)
-.Lduff8_end:
-
-.Lreturn8:
-	ret
 END(memcpy)
