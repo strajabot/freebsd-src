@@ -1,2 +1,3 @@
 MDSRCS+= \
-	strchrnul.S
+	strchrnul.S \
+	strnlen.S
