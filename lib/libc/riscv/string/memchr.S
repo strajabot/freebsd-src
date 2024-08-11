@@ -8,149 +8,175 @@
 
 /*
  * a0 - const void* b
- * a1 - int c;
- * a2 - size_t len;
+ * a1 - int c
+ * a2 - size_t len
  */
 ENTRY(memchr)
 	/*
-     * a0 - const void* b;
-     * a1 - char cccccccc[8];
-	 * a2 -	size_t len;
-	 * a3 - size_t bound;
-	 * a4 - char iter[8];
-	 * a5 - const void* last
-	 * a6 - size_t remaining
+	 * a0 - const char* ptr
+	 * a1 - char cccccccc[8]
+	 * a2 - char iter[8]
+	 * a3 - uint8_t* end
+	 * a4 - uint64_t* end_align
+	 * a5 - uint64_t* end_unroll
 	 */
 
-	/* int to char */
+	beqz a2, .Lno_match
+
+	/* c = (uint8_t) c */
 	andi a1, a1, 0xFF
 
-	/* strings where len < 8 handled here */
-	sltiu t0, a2, 8
-	beqz t0, .Lskip_lt_8
-.Llt_8:
-	beqz a2, .Lno_match
-	lb a4, (a0)
-	addi a2, a2, -1
-	addi a0, a0, 1
-	bne a1, a4, .Llt_8
-	addi a0, a0, -1
-	ret
-.Lskip_lt_8:
-
-	/* t0 = 0x0101010101010101 */
+	/*
+	 * t0 = 0x0101010101010101
+	 * t1 = 0x8080808080808080
+	 * t2 = b << 3
+	 * cccccccc = (uint8_t)c * t0
+	 * end = b + len;
+	 * ptr = b & ~0b111
+	 */
+	add a3, a0, a2
 	li t0, 0x01010101
+	sltu t2, a0, a3
 	slli t1, t0, 32
-	or t0, t0, t1
-
-	/* t1 = 0x8080808080808080 */
-	slli t1, t0, 7
-
-	/* spread char accross bytes */
-	mul a1, a1, t0
-
-	/* align_offset */
-	andi t2, a0, 0b111
-
-	/* align pointer */
-	andi a0, a0, ~0b111
-
-	/* used to check if c was found past the end of string */
-	li a3, 8
-
-	/* if pointer is aligned skip to loop */
-	beqz t2, .Lskip_start
-
-	/* len = len - (8-align_offset) */
-	addi t2, t2, -8
-	add a2, a2, t2
-
-	/* align first load */
-	ld a4, (a0)
-
-	xor a4, a4, a1
-
-	/* fill bytes before b with non-zero */
-	slli t2, t2, 3
 	neg t2, t2
-	srl t2, t0, t2
-	or a4, a4, t2
+	or t0, t0, t1
+	and a3, a3, t2
+	slli t1, t0, 7
+	slli t2, a0, 3
+	and a0, a0, ~0b111
+	mul a1, t0, a1
 
-	/* has_zero */
-	not t2, a4
-	sub a4, a4, t0
-	and a4, a4, t2
-	and a4, a4, t1
+	ld a2, (a0)
 
-	bnez a4, .Lfind_zero
+	/* mask_start = REP8_0x01 ^ (REP8_0x01 << t2)
+	 * iter = iter ^ cccccccc
+	 * iter = iter | mask_start
+	 */
+	sll t2, t0, t2
+	xor a2, a2, a1
+	xor t2, t2, t0
+	or a2, a2, t2
 
-	/* first iteration exit */
+	/* has_zero(iter)
+	 * end_align = (end + 7) & ~0b111;
+	 */
+	addi a4, a3, 7
+	not t2, a2
+	sub a2, a2, t0
+	and t2, t2, t1
+	andi a4, a4, ~0b111
+	and a2, a2, t2
+
+	/* ptr = ptr + 8 */
 	addi a0, a0, 8
 
-.Lskip_start:
-	add t2, a0, a2
-	andi a5, t2, ~0b111
+	bnez a2, .Lfind_zero
 
-	/* remaining bytes to check after the loop */
-	andi a6, t2, 0b111
+	/* if(ptr == end_align) */
+	beq a0, a4, .Lno_match
 
-	/* while (b != last) */
+	/* end_unroll = end_aling & ~0b1111 */
+	andi a5, a4, ~0b1111
+
+	/* instead of using a branch to check if ptr is 16byte aligned,
+	 * check the next 8byte for c and align ptr to 16byte down.
+	 * If ptr was 16byte aligned the 8byte will be checked again
+	 * inside the unrolled loop.
+	 * Improves perfomance by eliminating an unpredictable branch
+	 */
+
+	ld a2, (a0)
+	xor a2, a2, a1
+
+	not t2, a2
+	sub a2, a2, t0
+	and t2, t2, t1
+	and a2, a2, t2
+
+	addi a0, a0, 8
+
+	bnez a2, .Lfind_zero
+
+	andi a0, a0, ~0b1111
+
+	/* while(ptr != end_unroll) */
 	beq a0, a5, .Lskip_loop
 .Lloop:
-	ld a4, (a0)
-	xor a4, a4, a1
+	ld a2, (a0)
+	ld t3, 8(a0)
 
-	/* has_zero */
-	not t2, a4
-	sub a4, a4, t0
-	and a4, a4, t2
-	and a4, a4, t1
+	xor a2, a2, a1
+	xor t3, t3, a1
 
-	bnez a4, .Lfind_zero
+	not t2, a2
+	not t4, t3
+	sub a2, a2, t0
+	sub t3, t3, t0
+	and t2, t2, t1
+	and t4, t4, t1
+	and a2, a2, t2
+	and t3, t3, t4
 
 	addi a0, a0, 8
+
+	bnez a2, .Lfind_zero
+
+	/* move into iter for find_zero */
+	mv a2, t3
+
+	addi a0, a0, 8
+
+	bnez a2, .Lfind_zero
+
 	bne a0, a5, .Lloop
-
 .Lskip_loop:
-	/* ignore bytes past remaining in cccccccc */
-	mv a3, a6
 
-	/* 0 bytes remaining to check */
-	beqz a3, .Lno_match
+	/* there might be one 8byte left */
+	beq a0, a4, .Lno_match
 
-	ld a4, (a0)
-	xor a4, a4, a1
+	ld a2, (a0)
+	xor a2, a2, a1
 
-	/* has_zero */
-	not t2, a4
-	sub a4, a4, t0
-	and a4, a4, t2
-	and a4, a4, t1
+	not t2, a2
+	sub a2, a2, t0
+	and t2, t2, t1
+	and a2, a2, t2
 
-	bnez a4, .Lfind_zero
+	addi a0, a0, 8
+
+	beqz a2, .Lno_match
+
+.Lfind_zero:
+	/* ptr = ptr - 8
+	 * t1 = 0x0001020304050607
+	 * iter = iter & (-iter)
+	 * iter = iter >> 7
+	 * iter = iter * t1
+	 * iter = iter >> 56
+	 */
+	li t1, 0x10203000
+	neg t0, a2
+	slli t1, t1, 4
+	and a2, a2, t0
+	addi t1, t1, 0x405
+	srli a2, a2, 7
+	slli t1, t1, 16
+	addi a0, a0, -8
+	addi t1, t1, 0x607
+	mul a2, a2, t1
+	srli a2, a2, 56
+
+	/* left = end - ptr */
+	sub t0, a3, a0
+
+	/* return iter < left ? ptr + iter : NULL */
+	sltu t1, a2, t0
+	neg t1, t1
+	add a0, a0, a2
+	and a0, a0, t1
+	ret
 
 .Lno_match:
 	li a0, 0
-	ret
-
-.Lfind_zero:
-	/* isolate lowest set bit */
-	neg t0, a4
-	and a4, a4, t0
-
-	li t0, 0x0001020304050607
-	srli a4, a4, 7
-
-	/* lowest set bit is 2^(8*k)
-	 * multiplying by it shifts the idx array in t0 by k bytes to the left */
-	mul	a4, a4, t0
-
-	/* highest byte contains idx of first zero */
-	srli a4, a4, 56
-
-	/* bounds check */
-	bgeu a4, a3, .Lno_match
-
-	add a0, a0, a4
 	ret
 END(memchr)
