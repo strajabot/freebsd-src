@@ -23,21 +23,22 @@ ATF_TC_BODY(strnlen_alignments, tc)
 {
 	size_t (*strnlen_fn)(const char*, size_t) = strnlen;
 
-	char alignas(16) buffer[1 + 16 + 64 + 1 + 1] = { '/' };
+	char alignas(16) buffer[1 + 16 + 64 + 1 + 1];
+
+	memset(buffer, '/', sizeof(buffer)/sizeof(buffer[0]));
 
 	for (int align = 1; align < 1 + 16; align++) {
 		char* s = buffer + align;
-		memset(buffer, '/', sizeof(buffer)/sizeof(buffer[0]));
 
-		for (int maxlen = 0; maxlen <= 64; maxlen++) {
-			for(int len=0; len<= maxlen; len++) {
+		for (size_t maxlen = 0; maxlen <= 64; maxlen++) {
+			for(size_t len=0; len<= maxlen; len++) {
 				/* returns length */
 
 				/* without sentinels */
 				s[len] = '\0';
 				size_t val = strnlen_fn(s, maxlen);
 				if(val != len) {
-					fprintf(stderr, "align =  %d, maxlen = %d, len = %d",
+					fprintf(stderr, "align =  %d, maxlen = %zu, len = %zu",
 						align, maxlen, len);
 					atf_tc_fail("returned incorrect len");
 				}
@@ -47,7 +48,7 @@ ATF_TC_BODY(strnlen_alignments, tc)
 				s[maxlen + 1] = '\0';
 				val = strnlen_fn(s, maxlen);
 				if(val != len) {
-					fprintf(stderr, "align =  %d, maxlen = %d, len = %d",
+					fprintf(stderr, "align =  %d, maxlen = %zu, len = %zu",
 						align, maxlen, len);
 					atf_tc_fail("returned incorrect len (sentinels)");
 				}
@@ -64,7 +65,7 @@ ATF_TC_BODY(strnlen_alignments, tc)
 			/* without sentinels */
 			size_t val = strnlen_fn(s, maxlen);
 			if(val != maxlen) {
-				fprintf(stderr, "align =  %d, maxlen = %d, len = %d",
+				fprintf(stderr, "align =  %d, maxlen = %zu",
 					align, maxlen);
 				atf_tc_fail("should return maxlen");
 			}
@@ -74,7 +75,7 @@ ATF_TC_BODY(strnlen_alignments, tc)
 			s[maxlen + 1] = '\0';
 			val = strnlen_fn(s, maxlen);
 			if(val != maxlen) {
-				fprintf(stderr, "align =  %d, maxlen = %d, len = %d",
+				fprintf(stderr, "align =  %d, maxlen = %zu",
 					align, maxlen);
 				atf_tc_fail("should return maxlen (sentinels)");
 			}
@@ -85,14 +86,35 @@ ATF_TC_BODY(strnlen_alignments, tc)
 
 		}
 
-		for (int len = 0; len <= 64; len++) {
+	}
+
+}
+
+ATF_TC(strnlen_size_max);
+ATF_TC_HEAD(strnlen_size_max, tc)
+{
+    atf_tc_set_md_var(tc, "descr", "Test strnlen(3) with maxlen=SIZE_MAX");
+}
+
+ATF_TC_BODY(strnlen_size_max, tc)
+{
+	size_t (*strnlen_fn)(const char*, size_t) = strnlen;
+
+	char alignas(16) buffer[1 + 16 + 64 + 1 + 1];
+
+	memset(buffer, '/', sizeof(buffer)/sizeof(buffer[0]));
+
+	for (int align = 1; align < 1 + 16; align++) {
+		char* s = buffer + align;
+
+		for (size_t len = 0; len <= 64; len++) {
 			/* returns length */
 
 			/* without sentinels */
 			s[len] = '\0';
 			size_t val = strnlen_fn(s, SIZE_MAX);
 			if(val != len) {
-				fprintf(stderr, "align =  %d, maxlen = %lld, len = %d",
+				fprintf(stderr, "align =  %d, maxlen = %zu, len = %zu",
 					align, SIZE_MAX, len);
 				atf_tc_fail("returned incorrect len (SIZE_MAX)");
 			}
@@ -101,7 +123,7 @@ ATF_TC_BODY(strnlen_alignments, tc)
 			s[-1] = '\0';
 			val = strnlen_fn(s, SIZE_MAX);
 			if(val != len) {
-				fprintf(stderr, "align =  %d, maxlen = %lld, len = %d",
+				fprintf(stderr, "align =  %d, maxlen = %zu, len = %zu",
 					align, SIZE_MAX, len);
 				atf_tc_fail("returned incorrect len (sentinels) (SIZE_MAX)");
 			}
@@ -116,9 +138,12 @@ ATF_TC_BODY(strnlen_alignments, tc)
 
 }
 
+
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, strnlen_alignments);
+	ATF_TP_ADD_TC(tp, strnlen_size_max);
 
 	return atf_no_error();
 }
