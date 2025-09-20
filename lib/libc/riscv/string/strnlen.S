@@ -7,18 +7,17 @@
 #include <machine/asm.h>
 
 /*
- * a0 - const void* b
- * a1 - int c;
- * a2 - size_t len;
+ * a0 - const char *s
+ * a1 - size_t maxlen;
  */
 ENTRY(strnlen)
 	/*
-     * a0 - const char* s;
-     * a1 - size_t maxlen;
-	 * a2 -	uint64_t* ptr;
+	 * a0 - const char *s;
+	 * a1 - size_t maxlen;
+	 * a2 - uint64_t *ptr;
 	 * a3 - char iter[8];
-	 * a4 - uint64_t* end_align;
-	 * a5 - uint64_t* end_unroll;
+	 * a4 - uint64_t *end_align;
+	 * a5 - uint64_t *end_unroll;
 	 */
 
 	beqz a1, .Lnot_found
