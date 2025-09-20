@@ -28,14 +28,14 @@
 #include <machine/asm.h>
 
 /*
- * register a0 - void* s
+ * register a0 - void *dest
  * register a1 - int c
- * register a2 - size_t n
+ * register a2 - size_t len
  */
 ENTRY(memset)
 	andi a1, a1, 0xFF
 
-	slti t1, a2, 8
+	sltiu t1, a2, 8
 	mv t0, a0
 	bnez t1, .Lend
 
