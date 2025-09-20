@@ -32,13 +32,13 @@
  * uses haszero(v) (((v) - 0x01010101UL) & ~(v) & 0x80808080UL)
  * which evalutates > 0 when there is zero in v
  *
- * register a0 - char* str
+ * register a0 - char *s
  */
 ENTRY(strlen)
 	/*
-	 * register a0 - char*	str_start
-	 * register a1 - char*	str_ptr
-	 * register a2 - char[8]	iter
+	 * register a0 - char *str_start
+	 * register a1 - char *str_ptr
+	 * register a2 - char[8] iter
 	 */
 
 	/* load constants for haszero */
