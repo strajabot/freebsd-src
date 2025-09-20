@@ -7,18 +7,18 @@
 #include <machine/asm.h>
 
 /*
- * a0 - const char* str
+ * a0 - const char *s
  * a1 - int c
  */
 ENTRY(strrchr)
 	/*
-	 * a0 - const char* ptr_align
+	 * a0 - const char *ptr_align
 	 * a1 - temporary
 	 * a2 -	temporary
 	 * a3 - temporary
 	 * a4 -	temporary
 	 * a5 - const char[8] cccccccc
-	 * a6 - const uint64_t* save_align
+	 * a6 - const uint64_t *save_align
 	 * a7 - const uint64_t save_iter
 	 * t0 - const uintr64_t REP8_0X01
 	 * t1 - const uintr64_t REP8_0X80
