@@ -7,18 +7,18 @@
 #include <machine/asm.h>
 
 /*
- * a0 - const void* b
+ * a0 - const void *b
  * a1 - int c
  * a2 - size_t len
  */
 ENTRY(memchr)
 	/*
-	 * a0 - const char* ptr
+	 * a0 - const char *ptr
 	 * a1 - char cccccccc[8]
 	 * a2 - char iter[8]
-	 * a3 - uint8_t* end
-	 * a4 - uint64_t* end_align
-	 * a5 - uint64_t* end_unroll
+	 * a3 - uint8_t *end
+	 * a4 - uint64_t *end_align
+	 * a5 - uint64_t *end_unroll
 	 */
 
 	beqz a2, .Lno_match
@@ -75,14 +75,18 @@ ENTRY(memchr)
 	/* if(ptr == end_align) */
 	beq a0, a4, .Lno_match
 
-	/* end_unroll = end_aling & ~0b1111 */
+	/* end_unroll = end_align & ~0b1111 */
 	andi a5, a4, ~0b1111
 
-	/* instead of using a branch to check if ptr is 16byte aligned,
-	 * check the next 8byte for c and align ptr to 16byte down.
-	 * If ptr was 16byte aligned the 8byte will be checked again
-	 * inside the unrolled loop.
-	 * Improves perfomance by eliminating an unpredictable branch
+	/*
+	 * Instead of branching to check if `ptr` is 16-byte aligned:
+	 *   - Probe the next 8 bytes for `c`
+	 *   - Align `ptr` down to the nearest 16-byte boundary
+	 *
+	 * If `ptr` was already 16-byte aligned, those 8 bytes will be
+	 * checked again inside the unrolled loop.
+	 *
+	 * This removes an unpredictable branch and improves performance.
 	 */
 
 	ld a2, (a0)
