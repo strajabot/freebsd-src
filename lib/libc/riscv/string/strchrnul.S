@@ -9,12 +9,12 @@
 .extern strlen
 
 /*
- * a0 - const char* str
+ * a0 - const char *str
  * a1 - int c;
  */
 ENTRY(strchrnul)
 	/*
-	 * a0 - const char* ptr;
+	 * a0 - const char *ptr;
 	 * a1 - char cccccccc[8];
 	 * a2 - char iter[8];
 	 * a3 - char mask_end
